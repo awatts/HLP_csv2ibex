@@ -137,7 +137,7 @@ def parse_config_file(conf):
         * order:String - the shuffleSeq that describes the order of the items
         * defaults:String - the item defaults: see the hlp wiki(FIXME: url here) for specifics
     """
-    
+
     check_file(conf)
 
     outDict = {}
@@ -201,17 +201,17 @@ def format_header(dct):
             "RANDOM" : 'randomize(anyOf("filler",%s))',
             "RSHUFFLE" : 'rshuffle("filler",%s)'
         }[order]
-    
+
     #if the item list has been generated, go ahead and fill in the critical names
-    if len(Criticals):    
+    if len(Criticals):
         tmp = tmp % (','.join(['"{0}"'.format(c) for c in Criticals]))
-    
+
     try:
         outStr = 'var shuffleSequence = seq("intro", "info", "practice", sepWith("sep", %s), "contact", "sr", "code");\n\n'+\
             'var ds = "RegionedSentence";\n'+\
             'var qs = "Question";\n\n'+\
             'var manualSendResults = true;\n\n' +\
-            '%s;' 
+            '%s;'
         return outStr % (tmp, dct["defaults"])
     except KeyError:
         print "WARNING: invalid header dictionary...returning a NoneType"
@@ -219,7 +219,7 @@ def format_header(dct):
 
 def generate_header_cnf(conf):
     """
-    Wrapper for the parse_config_file method that generates a formatted string rather than a dictionary.    
+    Wrapper for the parse_config_file method that generates a formatted string rather than a dictionary.
     params:
       * conf:String - name of the input config file
     return:
@@ -229,7 +229,7 @@ def generate_header_cnf(conf):
     return format_header(d)
 def generate_header_dct(dct):
     """
-    Wrapper for the parse_config_file method that generates a formatted string rather than a dictionary.    
+    Wrapper for the parse_config_file method that generates a formatted string rather than a dictionary.
     params:
       * dct: - dict gathered from parse_config_file
     return:
@@ -264,7 +264,7 @@ def generate_item_dict(infile):
 
         for line in inputdata:
             #format fields (based on what fields do or don't exist in the input file)
-            
+
             #STIMULUS ID
             try:
                 try:
@@ -343,7 +343,7 @@ def generate_item_dict(infile):
                     lst = 0 ##make sure that there is only one of each
             except ValueError:
                 Criticals.append(stimType)
-            
+
 
             #QUESTIONs and ANSWERs
             questionComplete = False
@@ -353,8 +353,8 @@ def generate_item_dict(infile):
                 try:
                     question = line[COL_QUESTION+str(i)]
                     answer = line[COL_ANSWER+str(i)]
-                    
-                    #make sure both the QuestionN and AnswerN fields have a value                    
+
+                    #make sure both the QuestionN and AnswerN fields have a value
                     existsAnswer = answer not in IGNORED_VALUES
                     existsQuestion = question not in IGNORED_VALUES
 
@@ -400,7 +400,7 @@ def generate_item_dict(infile):
                 tmpStr = ITEM_FMT_STRINGS["FULL_ITEM"]
             # update dict, enforcing unique items (also by 'lst = 0' above)
             i = order+(0.1*float(lst))
-            
+
             outputLines[i] = tmpStr.format(itemName=stimType, gpNum=order, gpDepend=0, rs=stimulus, qs=questions)
 
     return outputLines
@@ -414,14 +414,14 @@ def generate_item_str(infile):
         * String containing the 'items' structure
     """
     dct = generate_item_dict(infile)
-    
+
     outputStr = ITEMS_HEADER
-    
+
     if 'practice' in Non_Criticals:
         outputStr += ITEMS_PRACTICE
-        
+
     outputStr += "\n\t"+'\n\t'.join(['[["list_ordering", 0], "Separator", {}],' for i in range(len(ListSet))])
-        
+
     outputStr += "\n\t"+'\n\t'.join([str(dct[i]) for i in sorted(dct)])
 #    for i in sorted(dct):
 #        outputStr += "\n\t"+str(dct[i])
@@ -458,11 +458,13 @@ def format_results(infile):
     """
     Produce two tab-delimited files from the supplied results file
     """
-    
+
     check_file(infile)
 
-    qOut = "Timestamp\tIP_MD5\tSeq\tType\tAnswerCorrect\n"
-    sOut = "Timestamp\tIP_MD5\tSeq\tType\tWordNum\tWord\tTag\tReadTime\n"
+    sHead = ("Timestamp","IP_MD5","Seq","Type","WordNum","Word","Tag","ReadTime")
+    qHead= ("Timestamp","IP_MD5","Seq","Type","AnswerCorrect")
+    sOut = []
+    qOut = []
     qSeq = 0
     sSeq = 0
 
@@ -477,18 +479,39 @@ def format_results(infile):
                     elif(lastCtr > int(s[7])): sSeq += 1;  qSeq+=1;
 
                     lastCtr = int(s[7])
-                    sOut += "%s\t%s\t%d\t%s\t%s\t%s\t%s\t%s\n" % (s[0],s[1],sSeq,s[5],s[7],s[8],s[10],s[9])
+                    sOut.append({
+                        'Timestamp': s[0],
+                        'IP_MD5': s[1],
+                        'Seq': sSeq,
+                        'Type': s[5],
+                        'WordNum': s[7],
+                        'Word': s[8],
+                        'Tag': s[10],
+                        'ReadTime': s[9]
+                    })
                 elif(s[2] == "Question"):
                     if(qSeq != sSeq): qSeq += 1;
-                    qOut += "%s\t%s\t%d\t%s\t%s\n" % (s[0],s[1],qSeq,s[5],s[9])
+                    qOut.append({
+                        'Timestamp': s[0],
+                        'IP_MD5': s[1],
+                        'Seq': qSeq,
+                        'Type': s[5],
+                        'AnswerCorrect': s[9]
+                    })
                 else:
-                    print "Warning: Unrecognized Controller: %s" % (s[2])
+                    print "Warning: Unrecognized Controller: {0}".format(s[2])
 
     with open('sentences.csv','w') as fout:
-        fout.write(sOut)
+        sdr = csv.DictWriter(fout, fieldnames=sOut, delimiter='\t')
+        sdr.writerow(zip(sHead,sHead)) # write a header row
+        for row in sOut:
+            sdr.writerow(row)
         print "File 'sentences.csv' successfully written"
     with open('questions.csv','w') as fout:
-        fout.write(qOut)
+        qdr = csv.DictWriter(fout, fieldnames=qOut, delimiter='\t')
+        qdr.writerow(zip(qHead,qHead)) # write a header row
+        for row in qOut:
+            qdr.writerow(row)
         print "File 'questions.csv' successfully written"
 
 
