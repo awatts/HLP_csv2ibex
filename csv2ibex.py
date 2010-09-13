@@ -189,30 +189,30 @@ def format_header(dct):
 
     if(filler == "SEP_EACH"):
         tmp = {
-            "ORDERED" : 'shuffle(randomize("filler"), anyOf(%s))',
-            "SHUFFLE" : 'shuffle(randomize("filler"), shuffle(%s))',
-            "RANDOM" : 'shuffle(randomize("filler"), seq(randomize(%s)))',
-            "RSHUFFLE" : 'shuffle(randomize("filler"), rshuffle(%s))'
+            "ORDERED" : 'shuffle(randomize("filler"), anyOf({0}))',
+            "SHUFFLE" : 'shuffle(randomize("filler"), shuffle({0}))',
+            "RANDOM" : 'shuffle(randomize("filler"), seq(randomize({0})))',
+            "RSHUFFLE" : 'shuffle(randomize("filler"), rshuffle({0}))'
         }[order]
     else:
         tmp = {
-            "ORDERED" : 'anyOf("filler", %s)',
-            "SHUFFLE" : 'shuffle("filler",%s)',
-            "RANDOM" : 'randomize(anyOf("filler",%s))',
-            "RSHUFFLE" : 'rshuffle("filler",%s)'
+            "ORDERED" : 'anyOf("filler", {0})',
+            "SHUFFLE" : 'shuffle("filler",{0})',
+            "RANDOM" : 'randomize(anyOf("filler",{0}))',
+            "RSHUFFLE" : 'rshuffle("filler",{0})'
         }[order]
 
     #if the item list has been generated, go ahead and fill in the critical names
     if len(Criticals):
-        tmp = tmp % (','.join(['"{0}"'.format(c) for c in Criticals]))
+        tmp = tmp.format(','.join(['"{0}"'.format(c) for c in Criticals]))
 
     try:
-        outStr = 'var shuffleSequence = seq("intro", "info", "practice", sepWith("sep", %s), "contact", "sr", "code");\n\n'+\
+        outStr = 'var shuffleSequence = seq("intro", "info", "practice", sepWith("sep", {0}), "contact", "sr", "code");\n\n'+\
             'var ds = "RegionedSentence";\n'+\
             'var qs = "Question";\n\n'+\
             'var manualSendResults = true;\n\n' +\
-            '%s;'
-        return outStr % (tmp, dct["defaults"])
+            '{1};'
+        return outStr.format(tmp, dct["defaults"])
     except KeyError:
         print "WARNING: invalid header dictionary...returning a NoneType"
         return None
@@ -269,7 +269,7 @@ def generate_item_dict(infile):
             try:
                 try:
                     idList.index(line[COL_STIM_ID])
-                    qExit("Warning: non-unique Stimulus Identifier: %s" %(line[COL_STIM_ID]), qExitOpt)
+                    qExit("Warning: non-unique Stimulus Identifier: {0}".format(line[COL_STIM_ID]), qExitOpt)
                 except ValueError:
                     if line[COL_STIM_ID] == None or line[COL_STIM_ID] == "":
                         qExit("Warning: Blank Stimulus Identifier encountered", qExitOpt)
@@ -305,7 +305,7 @@ def generate_item_dict(infile):
                     replaced = stimulus[replaceIndex:]
                     stimulus = stimulus[:replaceIndex]+chk
 
-                    print "Warning: misplaced punctuation at stimulusID {}: replaced '{}' with '{}'".format(ID, replaced, chk)
+                    print "Warning: misplaced punctuation at stimulusID {0}: replaced '{1}' with '{2}'".format(ID, replaced, chk)
             except KeyError:
                 print "ERROR: No 'Stimulus' column...\n\t-required to build an experiment!"
                 sys.exit(1)
@@ -314,7 +314,7 @@ def generate_item_dict(infile):
             try:
                 order = int(line[COL_ORDER])
                 if order == "" or order == None:
-                    qExit("Warning: blank order at stimuli: %s" % (ID), qExitOpt)
+                    qExit("Warning: blank order at stimuli: {0}".format(ID), qExitOpt)
             except KeyError:
                 if not orderWarning: print "Warning: order not specified, using default ordering (1,2,3,...)."; orderWarning = True;
                 try:
@@ -359,11 +359,11 @@ def generate_item_dict(infile):
                     existsQuestion = question not in IGNORED_VALUES
 
                     if existsQuestion and not existsAnswer:
-                        qExit("WARNING at stimuli %s, question %d: No answer present for question" % (ID, i), qExitOpt)
+                        qExit("WARNING at stimuli {0}, question {1}: No answer present for question".format(ID, i), qExitOpt)
                         raise KeyError
                         continue
                     elif existsAnswer and not existsQuestion:
-                        qExit("WARNING at stimuli %s, question %d: No question, but answer exists" % (ID, i), qExitOpt)
+                        qExit("WARNING at stimuli {0}, question {1}: No question, but answer exists".format(ID, i), qExitOpt)
                         raise KeyError
                         continue
                     elif not (existsAnswer and existsQuestion): #Don't display if question or answer is missing
@@ -385,7 +385,7 @@ def generate_item_dict(infile):
                         answer = ", as :"+tmp[:-1] + '], randomOrder: true'
 
                     #build the string of questions
-                    questions += '\n\t\tqs, {q: "%s" %s},' % (question, answer)
+                    questions += '\n\t\tqs, {{q: "{0}" {1}}},'.format(question, answer)
 
                 except KeyError:
                     if not questionComplete: print "No question/answer pair found for stimulus",ID,", using only stimulus.";
