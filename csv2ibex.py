@@ -347,7 +347,7 @@ def generate_item_dict(infile):
 
             #QUESTIONs and ANSWERs
             questionComplete = False
-            questions = ""
+            questions = []
             i = 1
             while True:  #loop until no more questions are found
                 try:
@@ -379,18 +379,17 @@ def generate_item_dict(infile):
                         else:
                             answer = ', hasCorrect: "No", randomOrder: false'
                     else:
-                        tmp = '['
-                        for a in answer.split(','):
-                            tmp = tmp+'"'+a+'",'
-                        answer = ", as :"+tmp[:-1] + '], randomOrder: true'
+                        tmp = ','.join(['"{0}"'.format(a) for a in answer.split(',')])
+                        answer = ", as : [{0}], randomOrder: true".format(tmp)
 
                     #build the string of questions
-                    questions += '\n\t\tqs, {{q: "{0}" {1}}},'.format(question, answer)
+                    questions.append('\n\t\tqs, {{q: "{0}" {1}}}'.format(question, answer))
 
                 except KeyError:
                     if not questionComplete: print "No question/answer pair found for stimulus",ID,", using only stimulus.";
                     break
                 i += 1
+            questions = ', '.join(questions)
 
             #Build output string dictionary ----
             #determine which format the item falls under
