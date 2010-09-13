@@ -447,7 +447,7 @@ def create_outfile(outfile, header, items, footer=""):
             pass
 
     with open(outfile, 'w') as fout:
-        fout.write("{0}\n{1}\n{2}\n".format(header, items, footer))
+        fout.write("{0}\n{1}\n{2}\n".format(header, items, footer).expandtabs(4))
     print "File '" + outfile + "' sucessfully created"
 
 
@@ -652,8 +652,3 @@ if __name__=="__main__":
         sys.exit(0)
     else:
         create_outfile(outfile, header, items)
-        try:
-            import tab
-            tab.replace(outfile)
-        except ImportError:
-            pass
