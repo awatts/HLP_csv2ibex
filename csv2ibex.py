@@ -483,10 +483,10 @@ def format_results(infile):
 
                     lastCtr = int(s[7])
                     sOut.append({
-                        'DateRecieved': s[0],
+                        'DateReceived': s[0],
                         'ParticipantID': s[1],
                         'ControllerName': "RegionedSentence",
-                        'ItemId': s[3],
+                        'ItemID': s[3],
                         'ElementNumber': s[4],
                         'StimulusType': s[5],
                         'Group': s[6],
@@ -512,18 +512,20 @@ def format_results(infile):
                         'AnswerCorrect': s[9],
                         'AnswerTime': s[10]
                     })
+                elif(s[2] == "Form"):
+                    pass # just ignore Form fields
                 else:
                     print "Warning: Unrecognized Controller: {0}".format(s[2])
 
     with open('sentences.csv','w') as fout:
-        sdr = csv.DictWriter(fout, fieldnames=sOut, delimiter='\t')
-        sdr.writerow(zip(sHead,sHead)) # write a header row
+        sdr = csv.DictWriter(fout, fieldnames=sHead, delimiter='\t')
+        sdr.writerow(dict(zip(sHead,sHead))) # write a header row
         for row in sOut:
             sdr.writerow(row)
         print "File 'sentences.csv' successfully written"
     with open('questions.csv','w') as fout:
-        qdr = csv.DictWriter(fout, fieldnames=qOut, delimiter='\t')
-        qdr.writerow(zip(qHead,qHead)) # write a header row
+        qdr = csv.DictWriter(fout, fieldnames=qHead, delimiter='\t')
+        qdr.writerow(dict(zip(qHead,qHead))) # write a header row
         for row in qOut:
             qdr.writerow(row)
         print "File 'questions.csv' successfully written"
@@ -589,6 +591,8 @@ if __name__=="__main__":
     if len(args) == 2:
         infile = args[0]
         outfile = args[1]
+    elif len(args) == 1 and options.outputFmtMode:
+        infile = args[0]
     else:
         if not options.prompt:
             parser.print_usage()
