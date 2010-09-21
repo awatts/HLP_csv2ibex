@@ -478,7 +478,8 @@ def format_results(infile):
         for line in fin:
             if (line[0] == '#'): continue;
             else:
-                s = line.split(",")
+                s = line.rstrip("\n").rstrip("\r\n").split(",")
+                print s
                 if(s[2] == "RegionedSentence"):
                     if(qSeq == sSeq): sSeq += 1;
                     elif(lastCtr > int(s[7])): sSeq += 1;  qSeq+=1;
