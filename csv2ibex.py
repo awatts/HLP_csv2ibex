@@ -460,8 +460,12 @@ def format_results(infile):
 
     check_file(infile)
 
-    sHead = ("Timestamp","IP_MD5","Seq","Type","WordNum","Word","Tag","ReadTime")
-    qHead= ("Timestamp","IP_MD5","Seq","Type","AnswerCorrect")
+    sHead = ("DateReceived","ParticipantID","ControllerName","ItemID",
+             "ElementNumber","StimulusType","Group","WordPosition","Word",
+             "RegionTag","RT","Newline","Sentence")
+    qHead = ("DateReceived","ParticipantID","ControllerName","ItemID",
+             "ElementNumber","StimulusType","Group","Question","Answer",
+             "AnswerCorrect","AnswerTime")
     sOut = []
     qOut = []
     qSeq = 0
@@ -479,23 +483,34 @@ def format_results(infile):
 
                     lastCtr = int(s[7])
                     sOut.append({
-                        'Timestamp': s[0],
-                        'IP_MD5': s[1],
-                        'Seq': sSeq,
-                        'Type': s[5],
-                        'WordNum': s[7],
+                        'DateRecieved': s[0],
+                        'ParticipantID': s[1],
+                        'ControllerName': "RegionedSentence",
+                        'ItemId': s[3],
+                        'ElementNumber': s[4],
+                        'StimulusType': s[5],
+                        'Group': s[6],
+                        'WordPosition': s[7],
                         'Word': s[8],
-                        'Tag': s[10],
-                        'ReadTime': s[9]
+                        'RegionTag': s[9],
+                        'RT': s[10],
+                        'Newline': s[11],
+                        'Sentence': s[12]
                     })
                 elif(s[2] == "Question"):
                     if(qSeq != sSeq): qSeq += 1;
                     qOut.append({
-                        'Timestamp': s[0],
-                        'IP_MD5': s[1],
-                        'Seq': qSeq,
-                        'Type': s[5],
-                        'AnswerCorrect': s[9]
+                        'DateReceived': s[0],
+                        'ParticipantID': s[1],
+                        'ControllerName': "Question",
+                        'ItemID': s[3],
+                        'ElementNumber': s[4],
+                        'StimulusType': s[5],
+                        'Group': s[6],
+                        'Question': s[7],
+                        'Answer': s[8],
+                        'AnswerCorrect': s[9],
+                        'AnswerTime': s[10]
                     })
                 else:
                     print "Warning: Unrecognized Controller: {0}".format(s[2])
