@@ -458,6 +458,8 @@ def format_results(infile):
     Produce two tab-delimited files from the supplied results file
     """
 
+    from urllib import unquote
+
     check_file(infile)
 
     sHead = ("DateReceived","ParticipantID","ControllerName","ItemID",
@@ -491,11 +493,11 @@ def format_results(infile):
                         'StimulusType': s[5],
                         'Group': s[6],
                         'WordPosition': s[7],
-                        'Word': s[8],
+                        'Word': unquote(s[8]),
                         'RegionTag': s[9],
                         'RT': s[10],
                         'Newline': s[11],
-                        'Sentence': s[12]
+                        'Sentence': unquote(s[12])
                     })
                 elif(s[2] == "Question"):
                     if(qSeq != sSeq): qSeq += 1;
@@ -507,7 +509,7 @@ def format_results(infile):
                         'ElementNumber': s[4],
                         'StimulusType': s[5],
                         'Group': s[6],
-                        'Question': s[7],
+                        'Question': unquote(s[7]),
                         'Answer': s[8],
                         'AnswerCorrect': s[9],
                         'AnswerTime': s[10]
