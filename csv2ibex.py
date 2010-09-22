@@ -462,16 +462,17 @@ def format_results(infile):
 
     check_file(infile)
 
-    sHead = ("DateReceived","ParticipantID","ControllerName","ItemID",
+    sHead = ("DateReceived","ParticipantID","IP_MD5","ControllerName","ItemID",
              "ElementNumber","StimulusType","Group","WordPosition","Word",
              "RegionTag","RT","Newline","Sentence")
-    qHead = ("DateReceived","ParticipantID","ControllerName","ItemID",
+    qHead = ("DateReceived","ParticipantID","IP_MD5","ControllerName","ItemID",
              "ElementNumber","StimulusType","Group","Question","Answer",
              "AnswerCorrect","AnswerTime")
     sOut = []
     qOut = []
     qSeq = 0
     sSeq = 0
+    workerid = ''
 
     with open(infile, 'r') as fin:
         lastCtr = 1
@@ -486,7 +487,8 @@ def format_results(infile):
                     lastCtr = int(s[7])
                     sOut.append({
                         'DateReceived': s[0],
-                        'ParticipantID': s[1],
+                        'ParticipantID': workerid,
+                        'IP_MD5': s[1],
                         'ControllerName': "RegionedSentence",
                         'ItemID': s[3],
                         'ElementNumber': s[4],
@@ -503,7 +505,8 @@ def format_results(infile):
                     if(qSeq != sSeq): qSeq += 1;
                     qOut.append({
                         'DateReceived': s[0],
-                        'ParticipantID': s[1],
+                        'ParticipantID': workerid,
+                        'IP_MD5': s[1],
                         'ControllerName': "Question",
                         'ItemID': s[3],
                         'ElementNumber': s[4],
@@ -515,7 +518,10 @@ def format_results(infile):
                         'AnswerTime': s[10]
                     })
                 elif(s[2] == "Form"):
-                    pass # just ignore Form fields
+                    if s[7] == 'workerid' or s[7] == 'name':
+                        workerid = s[8]
+                    else:
+                        pass
                 else:
                     print "Warning: Unrecognized Controller: {0}".format(s[2])
 
