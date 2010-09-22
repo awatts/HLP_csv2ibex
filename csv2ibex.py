@@ -65,7 +65,7 @@ def qExit(msg, option = "PROMPT"):
     """
     if option == "AUTOFAIL":
         print msg + "...STOPPING"
-        sys.exit(1);
+        sys.exit(1)
     elif option == "AUTOCONTINUE":
         print msg
         return
@@ -122,7 +122,7 @@ def remove_whitespace(s):
             elif c == '\'': quoting = 2;
             elif c == '\t': continue;
             elif c == ' ': continue;
-        s2 += c;
+        s2 += c
     return s2
 
 def parse_config_file(conf):
