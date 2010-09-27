@@ -36,7 +36,7 @@ ITEM_FMT_STRINGS = { \
                     }
 
 #editable from config or cmdline (TODO)
-ITEMS_HEADER = '[\n\t["sr", "__SendResults__", { }]\n\t'+\
+ITEMS_HEADER = '\n\t["sr", "__SendResults__", { }]\n\t'+\
         '["sep", "Separator", {}],\n\t' +\
         '["intro", "Message", {consentRequired: true, html: {include: "intro.html"}}],\n\t' +\
         '["info", "Form", {html: {include: "info.html"}}],'
@@ -114,14 +114,20 @@ def remove_whitespace(s):
     s2 = ""
     for c in s:
         if quoting == 1:
-            if c == '\"': quoting = 0;
+            if c == '\"':
+                quoting = 0
         elif quoting == 2:
-            if c == '\'': quoting = 0;
+            if c == '\'':
+                quoting = 0
         else:
-            if c == '\"': quoting = 1;
-            elif c == '\'': quoting = 2;
-            elif c == '\t': continue;
-            elif c == ' ': continue;
+            if c == '\"':
+                quoting = 1
+            elif c == '\'':
+                quoting = 2
+            elif c == '\t':
+                continue
+            elif c == ' ':
+                continue
         s2 += c
     return s2
 
@@ -149,8 +155,10 @@ def parse_config_file(conf):
             #remove whitespace and comment
             line = line[:-1]
             l = remove_whitespace(line)
-            if l=="": continue;
-            if l[0] == '#': continue;
+            if l=="":
+                continue
+            if l[0] == '#':
+                continue
 
             #handle the different kinds of input
             pairs = l.split(":")
@@ -163,8 +171,8 @@ def parse_config_file(conf):
                 continue
             elif(pairs[1]==""):
                 if(not curDef == ""):
-                    defStr += curDef[:-1] + " },";
-                curDef = "\n\t\""+pairs[0]+"\", {";
+                    defStr += curDef[:-1] + " },"
+                curDef = "\n\t\""+pairs[0]+"\", {"
                 continue
 
             #Handle actual varables
@@ -277,7 +285,7 @@ def generate_item_dict(infile):
                     ID = line[COL_STIM_ID]
             except KeyError:
                 if idList == []:
-                    qExit("Warning: no Stimulus Identifiers provided.", qExitOpt);
+                    qExit("Warning: no Stimulus Identifiers provided.", qExitOpt)
                     idList.append("NONE")
                 ID = "stim"+str(IDcount)
             IDcount += 1
@@ -316,7 +324,9 @@ def generate_item_dict(infile):
                 if order == "" or order == None:
                     qExit("Warning: blank order at stimuli: {0}".format(ID), qExitOpt)
             except KeyError:
-                if not orderWarning: print "Warning: order not specified, using default ordering (1,2,3,...)."; orderWarning = True;
+                if not orderWarning:
+                    print "Warning: order not specified, using default ordering (1,2,3,...)."
+                    orderWarning = True
                 try:
                     order = orderCounters[lst]
                 except KeyError:
@@ -334,11 +344,13 @@ def generate_item_dict(infile):
                 if(not line[COL_CONDITION].upper() in IGNORED_VALUES):
                     stimType = line[COL_CONDITION]
             except KeyError:
-                if not conditionWarning: print "Warning: conditions not specified, using 'defaultStim'";
+                if not conditionWarning:
+                    print "Warning: conditions not specified, using 'defaultStim'"
             try: #update the item list for use in shuffleSeq
                 if(not (stimType == "practice" or stimType == "filler")):
                     Criticals.index(stimType)
-                    if firstCritical == -1: firstCritical == order;
+                    if firstCritical == -1:
+                        firstCritical == order
                 else:
                     lst = 0 ##make sure that there is only one of each
             except ValueError:
@@ -386,7 +398,8 @@ def generate_item_dict(infile):
                     questions.append('\n\t\tqs, {{q: "{0}" {1}}}'.format(question, answer))
 
                 except KeyError:
-                    if not questionComplete: print "No question/answer pair found for stimulus",ID,", using only stimulus.";
+                    if not questionComplete:
+                        print "No question/answer pair found for stimulus",ID,", using only stimulus."
                     break
                 i += 1
             questions = ', '.join(questions)
@@ -421,12 +434,12 @@ def generate_item_str(infile):
 
     outputStr += "\n\t"+'\n\t'.join(['[["list_ordering", 0], "Separator", {}],' for i in range(len(ListSet))])
 
-    outputStr += "\n\t"+'\n\t'.join([str(dct[i]) for i in sorted(dct)])
+    outputStr += "\n\t"+',\n\t'.join([str(dct[i]) for i in sorted(dct)])
 #    for i in sorted(dct):
 #        outputStr += "\n\t"+str(dct[i])
 
     outputStr += "\n"+ITEMS_FOOTER
-    return '\nvar items = [' + outputStr+ '\n]'
+    return '\nvar items = [' + outputStr+ '\n];'
 
 # OUTPUT FILE CREATION **************************************************************
 
@@ -477,12 +490,16 @@ def format_results(infile):
     with open(infile, 'r') as fin:
         lastCtr = 1
         for line in fin:
-            if (line[0] == '#'): continue;
+            if (line[0] == '#'):
+                continue
             else:
                 s = line.rstrip("\n").rstrip("\r\n").split(",")
                 if(s[2] == "RegionedSentence"):
-                    if(qSeq == sSeq): sSeq += 1;
-                    elif(lastCtr > int(s[7])): sSeq += 1;  qSeq+=1;
+                    if(qSeq == sSeq):
+                        sSeq += 1
+                    elif(lastCtr > int(s[7])):
+                        sSeq += 1
+                        qSeq+=1
 
                     lastCtr = int(s[7])
                     sOut.append({
@@ -502,7 +519,8 @@ def format_results(infile):
                         'Sentence': unquote(s[12])
                     })
                 elif(s[2] == "Question"):
-                    if(qSeq != sSeq): qSeq += 1;
+                    if(qSeq != sSeq):
+                        qSeq += 1
                     qOut.append({
                         'DateReceived': s[0],
                         'ParticipantID': workerid,
@@ -661,11 +679,11 @@ if __name__=="__main__":
                 dct["order"] = "ORDERED"
 
     if infile == None:
-        infile = dct["inputfile"];
+        infile = dct["inputfile"]
     if outfile == None:
-        outfile = dct["outputfile"];
+        outfile = dct["outputfile"]
     else:
-        dct["outputfile"] = outfile;
+        dct["outputfile"] = outfile
 
     items = generate_item_str(infile)
     header = generate_header_dct(dct)
