@@ -37,11 +37,11 @@ ITEM_FMT_STRINGS = { \
                     }
 
 #editable from config or cmdline (TODO)
-ITEMS_HEADER = '\n\t["sr", "__SendResults__", { }]\n\t'+\
+ITEMS_HEADER = '\n\t["sr", "__SendResults__", { }],\n\t'+\
         '["sep", "Separator", {}],\n\t' +\
         '["intro", "Message", {consentRequired: true, html: {include: "intro.html"}}],\n\t' +\
         '["info", "Form", {html: {include: "info.html"}}],'
-ITEMS_FOOTER = '\t["contact", "Message", {consentRequired: false, html: {include: "contacts.html"}}]\n\t'+\
+ITEMS_FOOTER = '\t["contact", "Message", {consentRequired: false, html: {include: "contacts.html"}}],\n\t'+\
         '["code", "Message", {consentRequired: false, html: {include: "code.html"}}]'
 ITEMS_PRACTICE = '\t["startprac", "Message", {consentRequired: false, html: {include: "start_practice.html"}}]\n\t'+\
         '["endprac", "Message", {consentRequired: false, html: {include: "end_practice.html"}}]'
@@ -142,11 +142,11 @@ def parse_config_file(conf):
     defaults_dct['Question']['randomOrder'] = cfg.get('Question', 'randomOrder')
     defaults_dct['Question']['hasCorrect'] = cfg.get('Question', 'hasCorrect')
 
-    subsection = '"{0}", {{\n{1} }}'
+    subsection = '\t"{0}", {{\n{1} }}'
     subsecs = []
     for section in defaults_sections:
         subsecs.append(subsection.format(section,
-            ",\n".join(["\t{0}: {1}".format(k,v) for k,v in defaults_dct[section].iteritems()])
+            ",\n".join(["\t\t{0}: {1}".format(k,v) for k,v in defaults_dct[section].iteritems()])
         ))
 
     defaults_string = "var defaults = [\n{0}\n];".format(',\n'.join(subsecs))
@@ -187,7 +187,7 @@ def format_header(dct):
             'var ds = "RegionedSentence";\n'+\
             'var qs = "Question";\n\n'+\
             'var manualSendResults = true;\n\n' +\
-            '{1};'
+            '{1}'
         return outStr.format(tmp, dct["defaults"])
     except KeyError:
         print "WARNING: invalid header dictionary...returning a NoneType"
@@ -406,8 +406,8 @@ def generate_item_str(infile):
 #    for i in sorted(dct):
 #        outputStr += "\n\t"+str(dct[i])
 
-    outputStr += "\n"+ITEMS_FOOTER
-    return '\nvar items = [' + outputStr+ '\n];'
+    outputStr += ",\n"+ITEMS_FOOTER
+    return '\nvar items = [{0}\n];'.format(outputStr)
 
 # OUTPUT FILE CREATION **************************************************************
 
