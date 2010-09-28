@@ -642,7 +642,7 @@ if __name__=="__main__":
             else: dct["order"] = "SHUFFLE"
         else:
             if options.randomize:
-                dct["order"] = "RANDOMIZE"
+                dct["order"] = "RANDOM"
             else:
                 dct["order"] = "ORDERED"
 
