@@ -19,6 +19,7 @@
 
 import csv
 import sys
+import ConfigParser
 
 # GLOBALS *************************************************************
 #changed in script
@@ -106,31 +107,6 @@ def check_punctuation(sentence):
 
 # HEADER GENERATION ***************************************************
 
-def remove_whitespace(s):
-    """
-    Simple method to remove tabs and spaces from non-quote strings
-    """
-    quoting = 0
-    s2 = ""
-    for c in s:
-        if quoting == 1:
-            if c == '\"':
-                quoting = 0
-        elif quoting == 2:
-            if c == '\'':
-                quoting = 0
-        else:
-            if c == '\"':
-                quoting = 1
-            elif c == '\'':
-                quoting = 2
-            elif c == '\t':
-                continue
-            elif c == ' ':
-                continue
-        s2 += c
-    return s2
-
 def parse_config_file(conf):
     """
     params:
@@ -143,47 +119,39 @@ def parse_config_file(conf):
         * order:String - the shuffleSeq that describes the order of the items
         * defaults:String - the item defaults: see the hlp wiki(FIXME: url here) for specifics
     """
-
-    check_file(conf)
+    cfg = ConfigParser.SafeConfigParser()
+    if cfg.read(conf) == []:
+        print "Failed to read config file!"
 
     outDict = {}
-    defStr = "var defaults = ["
-    curDef = ""
-    with open(conf, 'r') as fin:
-        mode = "vars" #Options are 'vars' 'defaults'
-        for line in fin:
-            #remove whitespace and comment
-            line = line[:-1]
-            l = remove_whitespace(line)
-            if l=="":
-                continue
-            if l[0] == '#':
-                continue
+    outDict['experiment_name'] = cfg.get('Vars', 'experiment_name')
+    outDict['researcher'] = cfg.get('Vars', 'researcher')
+    outDict['contact'] = cfg.get('Vars', 'contact')
+    outDict['inputfile'] = cfg.get('Vars', 'inputfile')
+    outDict['outputfile'] = cfg.get('Vars', 'outputfile')
+    outDict['order'] = cfg.get('Vars', 'order')
+    outDict['filler'] = cfg.get('Vars', 'filler')
 
-            #handle the different kinds of input
-            pairs = l.split(":")
+    defaults_sections = ['Separator', 'RegionedSentence', 'Question']
+    defaults_dct = {'Separator' : {}, 'RegionedSentence' : {}, 'Question' : {}}
+    defaults_dct['Separator']['transfer'] = cfg.get('Separator', 'transfer')
+    defaults_dct['Separator']['normalMessage'] = cfg.get('Separator', 'normalMessage')
+    defaults_dct['Separator']['errorMessage'] = cfg.get('Separator', 'errorMessage')
+    defaults_dct['RegionedSentence']['mode'] = cfg.get('RegionedSentence', 'mode')
+    defaults_dct['Question']['as'] = cfg.get('Question', 'as')
+    defaults_dct['Question']['randomOrder'] = cfg.get('Question', 'randomOrder')
+    defaults_dct['Question']['hasCorrect'] = cfg.get('Question', 'hasCorrect')
 
-            if(pairs[0]=="VARS" and pairs[1]==""):
-                mode ="vars"
-                continue
-            elif(pairs[0]=="DEFAULTS" and pairs[1]==""):
-                mode ="defaults"
-                continue
-            elif(pairs[1]==""):
-                if(not curDef == ""):
-                    defStr += curDef[:-1] + " },"
-                curDef = "\n\t\""+pairs[0]+"\", {"
-                continue
+    subsection = '"{0}", {{\n{1} }}'
+    subsecs = []
+    for section in defaults_sections:
+        subsecs.append(subsection.format(section,
+            ",\n".join(["\t{0}: {1}".format(k,v) for k,v in defaults_dct[section].iteritems()])
+        ))
 
-            #Handle actual varables
-            if(mode == "vars"):
-                outDict[pairs[0]] = pairs[1]
-            elif(mode == "defaults"):
-                curDef += "\n\t\t"+ pairs[0] + ": " + pairs[1] + ","
-            else:
-                pass
-    defStr += curDef[:-1] + " }\n];"
-    outDict["defaults"]=defStr
+    defaults_string = "var defaults = [\n{0}\n];".format(',\n'.join(subsecs))
+
+    outDict['defaults'] = defaults_string
     return outDict
 
 def format_header(dct):
@@ -589,7 +557,7 @@ if __name__=="__main__":
                           epilog="Author: Andrew Wood <andywood@vt.edu>",
                           version="%prog 0.9.5")
 
-    parser.add_option("-c", "--config", dest="configfile", default="default_cfg",
+    parser.add_option("-c", "--config", dest="configfile", default="default.cfg",
                   help="Use a custom config file")
     parser.add_option("-d", "--defaults", action="store_true", dest="defaults",
                   default=True, help="Use default in-out files")
@@ -636,18 +604,18 @@ if __name__=="__main__":
     #handle defaults
     if not options.defaults:
         if(options.prompt): #(gather this info via command prompts)
-            if(options.configfile == "default_cfg"):
+            if(options.configfile == "default.cfg"):
                 options.configfile = raw_input("Enter the name of your custom config file, or simply hit enter to continue with prompts:")
                 if(options.configfile == ""):
-                    options.configfile = "default_cfg"
-            if(options.infile == None or configfile == "default_cfg"):
+                    options.configfile = "default.cfg"
+            if(options.infile == None or configfile == "default.cfg"):
                 options.infile = raw_input("Enter the name of your input file (required): ")
                 check_file(options.infile)
-            if(outfile == None or options.configfile == "default_cfg"):
+            if(outfile == None or options.configfile == "default.cfg"):
                 outfile = raw_input("Enter the desired output file name [data.js]: ")
                 if(options.outfile == ""):
                     outfile="data.js"
-            if(options.configfile == "default_cfg"):
+            if(options.configfile == "default.cfg"):
                 if( (raw_input("Evenly space different item types? \nUse this option unless you have specified an order for all items (y/n)")) == 'y'):
                     options.shuffle = True
                 if( (raw_input("Randomize items? \nIMPORTANT: Only use this option if you did not specify an order! (y/n)")) == 'y'):
