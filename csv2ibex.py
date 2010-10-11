@@ -19,14 +19,14 @@
 
 import csv
 import sys
+import re
 import ConfigParser
 
 # GLOBALS *************************************************************
 #changed in script
-Criticals = []
-Non_Criticals = [] #should only end up with 'practice' and 'filler' (for now)
+Non_Criticals = ('practice', 'filler')
+Criticals = set()
 ListSet = set() #list of "list" index numbers
-
 #not changeable by config or cmdline
 END_PUNCTUATION = ['.', '!', '?']
 IGNORED_VALUES = ["", "NA", "N/A", "-", None]
@@ -54,6 +54,7 @@ COL_TYPE = "StimulusType"
 COL_CONDITION = "Condition"
 COL_QUESTION = "Question"
 COL_ANSWER = "Answer"
+COL_ITEMID = "ItemID"
 
 
 # UTILITY *************************************************************
@@ -220,171 +221,178 @@ def generate_item_dict(infile):
     params:
         * infile:String - name of the input tab-separated file
     return:
-        * Dictionary of items in format {key: order.list, value: outputstring}
+        * List of Dictionaries of items
     """
+
     check_file(infile)
 
-    listWarning = False
     orderWarning = False
-    conditionWarning = False
-
-    firstCritical = -1
-    defaultOrder = 0
     orderCounters = {}
-    outputLines = {}
-    idList = []
-    IDcount = 2
+    items = []
+    stimids = set()
 
     with open(infile, 'r') as csvin:
         inputdata = csv.DictReader(csvin, delimiter='\t')
+        fields = inputdata.fieldnames
 
-        for line in inputdata:
-            #format fields (based on what fields do or don't exist in the input file)
+        if COL_STIM_ID not in fields:
+            qExit("Warning: no Stimulus Identifiers provided.", qExitOpt)
+        if COL_LIST not in fields:
+            if not listWarning:
+                print "Warning: No 'List' column present, using one list."
+        if COL_STIMULUS not in fields:
+            print "ERROR: No 'Stimulus' column...\n\t-required to build an experiment!"
+            sys.exit(1)
+
+        for i, line in enumerate(inputdata, start=1):
+            itemDict = {}
 
             #STIMULUS ID
-            try:
-                try:
-                    idList.index(line[COL_STIM_ID])
-                    qExit("Warning: non-unique Stimulus Identifier: {0}".format(line[COL_STIM_ID]), qExitOpt)
-                except ValueError:
-                    if line[COL_STIM_ID] == None or line[COL_STIM_ID] == "":
-                        qExit("Warning: Blank Stimulus Identifier encountered", qExitOpt)
-                    idList.append(line[COL_STIM_ID])
-                    ID = line[COL_STIM_ID]
-            except KeyError:
-                if idList == []:
-                    qExit("Warning: no Stimulus Identifiers provided.", qExitOpt)
-                    idList.append("NONE")
-                ID = "stim"+str(IDcount)
-            IDcount += 1
+            if COL_STIM_ID in fields:
+                itemDict['StimulusID'] = line[COL_STIM_ID]
+                if itemDict['StimulusID'] in ("", None):
+                    qExit("Warning: Blank Stimulus Identifier encountered", qExitOpt)
 
             #LIST
             try:
-                lst = line[COL_LIST]
+                itemDict['List'] = line[COL_LIST]
+                ListSet.add(line[COL_LIST])
             except KeyError:
-                if not listWarning: print "Warning: No 'List' column present, using one list."
-                lst = 1
-            ListSet.add(lst)
+                itemDict['List'] = 1
 
             #STIMULUS
-            try:
-                stimulus = line[COL_STIMULUS].strip()
-                if stimulus == "":
-                    qExit("Warning: Blank stimulus: "+ID, qExitOpt)
-                    continue
-                chk = check_punctuation(stimulus)
-                if not chk:
-                    print "Warning: no ending punctuation for stimulusID ",ID
-                elif chk is not True:
-                    #then chk is a suggestion. Replace the last word with the fixed punctuation location
-                    replaceIndex = len(stimulus)-len(chk)
-                    replaced = stimulus[replaceIndex:]
-                    stimulus = stimulus[:replaceIndex]+chk
-
-                    print "Warning: misplaced punctuation at stimulusID {0}: replaced '{1}' with '{2}'".format(ID, replaced, chk)
-            except KeyError:
-                print "ERROR: No 'Stimulus' column...\n\t-required to build an experiment!"
-                sys.exit(1)
+            stimulus = line[COL_STIMULUS].strip()
+            if stimulus == "":
+                qExit("Warning: Blank stimulus: {}".format(i), qExitOpt)
+                continue
+            chk = check_punctuation(stimulus)
+            if not chk:
+                print "Warning: no ending punctuation for stimulusID {0}".format(i)
+            elif chk is not True:
+                #then chk is a suggestion. Replace the last word with the fixed punctuation location
+                replaceIndex = len(stimulus)-len(chk)
+                replaced = stimulus[replaceIndex:]
+                stimulus = stimulus[:replaceIndex]+chk
+                print "Warning: misplaced punctuation at stimulusID {0}: replaced '{1}' with '{2}'".format(i, replaced, chk)
+            itemDict['Stimulus'] = stimulus
 
             #ORDER
             try:
-                order = int(line[COL_ORDER])
-                if order == "" or order == None:
-                    qExit("Warning: blank order at stimuli: {0}".format(ID), qExitOpt)
+                itemDict['Order'] = int(line[COL_ORDER])
+                if itemDict['Order'] in ("", None):
+                    qExit("Warning: blank order at stimuli: {0}".format(i), qExitOpt)
             except KeyError:
                 if not orderWarning:
                     print "Warning: order not specified, using default ordering (1,2,3,...)."
                     orderWarning = True
                 try:
-                    order = orderCounters[lst]
+                    itemDict['Order'] = orderCounters[itemDict['List']]
                 except KeyError:
-                    order = orderCounters[lst] = 1  #if it's the first item of a list
-                orderCounters[lst] = orderCounters[lst]+1
+                    #if it's the first item of a list
+                    itemDict['Order'] = orderCounters[itemDict['List']] = 1
+
+                orderCounters[itemDict['List']] += 1
 
             #TYPE
             try:
-                stimType = line[COL_TYPE]
+                itemDict['Type'] = line[COL_TYPE]
             except KeyError:
-                stimType = "defaultStim"
+                itemDict['Type'] = "defaultStim"
 
             #CONDITION (overwrites type, unless it's '-'
             try:
                 if(not line[COL_CONDITION].upper() in IGNORED_VALUES):
-                    stimType = line[COL_CONDITION]
+                    itemDict['Type'] = line[COL_CONDITION]
             except KeyError:
                 if not conditionWarning:
                     print "Warning: conditions not specified, using 'defaultStim'"
-            try: #update the item list for use in shuffleSeq
-                if(not (stimType == "practice" or stimType == "filler")):
-                    Criticals.index(stimType)
-                    if firstCritical == -1:
-                        firstCritical == order
-                else:
-                    lst = 0 ##make sure that there is only one of each
-            except ValueError:
-                Criticals.append(stimType)
+            if(itemDict['Type'] not in ("practice","filler")):
+                itemDict['Critical'] = True
+                Criticals.add(itemDict['Type'])
+            else:
+                itemDict['Critical'] = False
 
+            #ITEMID
+            try:
+                itemDict['ID'] = line[COL_ITEMID]
+
+                # check to see if we've already seen this item
+                # e.g. the same filler item on multiple lists
+                tmp = (itemDict['ID'], itemDict['Stimulus'])
+                if tmp in stimids:
+                    print "Skipping duplicate item {0}".format(i)
+                    continue # don't proceed onto adding it to the items
+                else:
+                    stimids.add(tmp)
+            except KeyError:
+                print "Warning: Missing Item ID at stimuli {0}".format(i)
 
             #QUESTIONs and ANSWERs
-            questionComplete = False
-            questions = []
-            i = 1
-            while True:  #loop until no more questions are found
-                try:
-                    question = line[COL_QUESTION+str(i)]
-                    answer = line[COL_ANSWER+str(i)]
+            qa = re.compile(r'^[Question|Answer]')
+            questions = dict([(k,v) for (k,v) in line.iteritems() if re.match(qa, k)])
 
-                    #make sure both the QuestionN and AnswerN fields have a value
-                    existsAnswer = answer not in IGNORED_VALUES
-                    existsQuestion = question not in IGNORED_VALUES
-
-                    if existsQuestion and not existsAnswer:
-                        qExit("WARNING at stimuli {0}, question {1}: No answer present for question".format(ID, i), qExitOpt)
-                        raise KeyError
-                        continue
-                    elif existsAnswer and not existsQuestion:
-                        qExit("WARNING at stimuli {0}, question {1}: No question, but answer exists".format(ID, i), qExitOpt)
-                        raise KeyError
-                        continue
-                    elif not (existsAnswer and existsQuestion): #Don't display if question or answer is missing
-                        raise KeyError
-                        continue
-                    else:
-                        questionComplete = True
-
-                    #determine type of question (yes/no vs multiple choice)
-                    if(answer.upper() == "Y" or answer.upper() == "N"):
-                        if(answer.upper() == "Y"):
-                            answer = ', hasCorrect: "Yes", randomOrder: false'
-                        else:
-                            answer = ', hasCorrect: "No", randomOrder: false'
-                    else:
-                        tmp = ','.join(['"{0}"'.format(a) for a in answer.split(',')])
-                        answer = ", as : [{0}], randomOrder: true".format(tmp)
-
-                    #build the string of questions
-                    questions.append('\n\t\tqs, {{q: "{0}" {1}}}'.format(question, answer))
-
-                except KeyError:
-                    if not questionComplete:
-                        print "No question/answer pair found for stimulus",ID,", using only stimulus."
-                    break
-                i += 1
-            questions = ', '.join(questions)
-
-            #Build output string dictionary ----
-            #determine which format the item falls under
-            if stimType == "filler" or stimType == "practice":
-                tmpStr = ITEM_FMT_STRINGS["GPNUM_ONLY"]
+            final_questions = []
+            if len(questions) == 0:
+                print "No question/answer pair found for stimulus",i,", using only stimulus."
             else:
-                tmpStr = ITEM_FMT_STRINGS["FULL_ITEM"]
-            # update dict, enforcing unique items (also by 'lst = 0' above)
-            i = order+(0.1*float(lst))
+                for j in range(1, (len(questions) / 2)+1):
+                    skip = False
+                    question = questions['Question'+str(j)]
+                    if question in IGNORED_VALUES:
+                        #print "Warning at stimulus {0}: Invalid or no value for Question {1}. Skipping item!".format(i,j)
+                        skip = True
+                    answer = questions['Answer'+str(j)]
+                    if (answer in IGNORED_VALUES) and (skip == False) :
+                        #print "Warning at stimulus {0}: No Answer for Question {1}. Skipping item!".format(i,j)
+                        skip = True
+                    if not skip:
+                        final_questions.append({'Question': question, 'Answer': answer})
+            itemDict['Questions'] = final_questions
 
-            outputLines[i] = tmpStr.format(itemName=stimType, gpNum=order, gpDepend=0, rs=stimulus, qs=questions)
+            items.append(itemDict)
+    return items
 
-    return outputLines
+def format_questions(qlst):
+    """
+    Takes a list of dicts {Question: val, Answer: val} and formats them
+    for being added to an item
+    """
+    qs = []
+    for q in qlst:
+        question = q['Question']
+        #determine type of question (yes/no vs multiple choice)
+        answer = q['Answer'].upper()
+        if(answer in ('Y','N')):
+            if(answer == 'Y'):
+                answer = 'hasCorrect: "Yes", randomOrder: false'
+            else:
+                answer = 'hasCorrect: "No", randomOrder: false'
+        else:
+            tmp = ','.join(['"{0}"'.format(a) for a in answer.split(',')])
+            answer = "as : [{0}], randomOrder: true".format(tmp)
 
+        #build the string of questions
+        qs.append('qs, {{q: "{0}", {1}}}'.format(question, answer))
+    if qs == []:
+        return None
+    else:
+        return ',\n\t\t'.join(qs)
+
+def format_item(item):
+    """
+    Takes a dict representing an item and formats it
+    """
+    questions = []
+    try:
+        questions = item['Questions']
+    except KeyError:
+        pass # it's already set to []
+
+    fmt_item = ' ds, {{s: "{0}", id: "{1}" }}'.format(item['Stimulus'], item['ID'])
+    fmt_quest = format_questions(questions)
+    if fmt_quest:
+        fmt_item = ',\n\t\t'.join((fmt_item, fmt_quest))
+    return '[["{0}",[{1},0]],{2}]'.format(item['Type'], str(item['Order']), fmt_item)
 
 def generate_item_str(infile):
     """
@@ -397,14 +405,16 @@ def generate_item_str(infile):
 
     outputStr = ITEMS_HEADER
 
-    if 'practice' in Non_Criticals:
+    practice = [item for item in dct if item['Type'] == 'practice']
+    if practice != []:
         outputStr += ITEMS_PRACTICE
 
+    # output N instances of this string, where N is the number of lists
     outputStr += "\n\t"+'\n\t'.join(['[["list_ordering", 0], "Separator", {}],' for i in range(len(ListSet))])
 
-    outputStr += "\n\t"+',\n\t'.join([str(dct[i]) for i in sorted(dct)])
-#    for i in sorted(dct):
-#        outputStr += "\n\t"+str(dct[i])
+    items = [format_item(item) for item in sorted(dct, key=lambda x: x['Order'])]
+
+    outputStr += "\n\t"+',\n\t'.join(items)
 
     outputStr += ",\n"+ITEMS_FOOTER
     return '\nvar items = [{0}\n];'.format(outputStr)
