@@ -378,7 +378,26 @@ def format_questions(qlst):
     else:
         return ',\n\t\t'.join(qs)
 
-def format_item(item):
+def split_context_stimuli(stimulus):
+    """
+    Takes a multi-sentence stimulus item and splits it into an array of sentences
+    formatted such that any starting with "S\d+:" has that element joined with
+    the first word.
+    """
+
+    # Each sentence should end with a period, question mark, or exclamation mark
+    # followed by a space
+    stimlist = [x for x in re.split(r"([^\.]+[\.\?\!]+) ", stimulus) if len(x) > 0]
+
+    for i, item in enumerate(stimlist):
+        tmp = re.split(r"(S\d+:) (.*)", item)
+        if len(tmp) > 1:
+            # elements 0 and 3 are going to be ''
+            stimlist[i] = "{0}_{1}".format(tmp[1], tmp[2])
+
+    return stimlist
+
+def format_item(item, multi=False):
     """
     Takes a dict representing an item and formats it
     """
@@ -388,13 +407,19 @@ def format_item(item):
     except KeyError:
         pass # it's already set to []
 
-    fmt_item = ' ds, {{s: "{0}", id: "{1}" }}'.format(item['Stimulus'], item['ID'])
+    stimulus = item['Stimulus']
+    fmt_item = ' ds, {{s: "{0}", id: "{1}" }}'
+    if multi:
+        stimulus = split_context_stimuli(stimulus)
+        fmt_item = ' ds, {{s: {0}, id: "{1}" }}'
+
+    fmt_item = fmt_item.format(stimulus, item['ID'])
     fmt_quest = format_questions(questions)
     if fmt_quest:
         fmt_item = ',\n\t\t'.join((fmt_item, fmt_quest))
     return '[["{0}",[{1},0]],{2}]'.format(item['Type'], str(item['Order']), fmt_item)
 
-def generate_item_str(infile):
+def generate_item_str(infile, multi=False):
     """
     params:
         * indict:Dictionary - contains the dictionary of items to be wrapped in a string
@@ -412,7 +437,7 @@ def generate_item_str(infile):
     # output N instances of this string, where N is the number of lists
     outputStr += "\n\t"+'\n\t'.join(['[["list_ordering", 0], "Separator", {}],' for i in range(len(ListSet))])
 
-    items = [format_item(item) for item in sorted(dct, key=lambda x: x['Order'])]
+    items = [format_item(item, multi=multi) for item in sorted(dct, key=lambda x: x['Order'])]
 
     outputStr += "\n\t"+',\n\t'.join(items)
 
@@ -564,7 +589,7 @@ if __name__=="__main__":
                           description="IBEX Input File Converter: " +\
                                       "Converts a tab-delimited CSV file to a JavaScript input file " +\
                                       "for Ibex.\n",
-                          epilog="Author: Andrew Wood <andywood@vt.edu>",
+                          epilog="Author: Andrew Wood <andywood@vt.edu> and Andrew Watts <andrew.watts@rochester.edu>",
                           version="%prog 0.9.5")
 
     parser.add_option("-c", "--config", dest="configfile", default="default.cfg",
@@ -587,6 +612,8 @@ if __name__=="__main__":
                       help="Shuffle (evenly space) the different types of items")
     parser.add_option("-S", "--strict", action="callback", callback=set_strict,
                       help="Strict: will automatically stop if an error is encountered")
+    parser.add_option("-m", "--multi", action="store_true", dest="multi", default=False,
+                      help="Split multiple sentences into an array to be presented on seperate lines")
 
     (options, args) = parser.parse_args()
 
@@ -663,7 +690,7 @@ if __name__=="__main__":
     else:
         dct["outputfile"] = outfile
 
-    items = generate_item_str(infile)
+    items = generate_item_str(infile, multi=options.multi)
     header = generate_header_dct(dct)
 
     #debug the cmd-line processor
