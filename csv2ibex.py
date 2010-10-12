@@ -40,11 +40,11 @@ ITEM_FMT_STRINGS = { \
 ITEMS_HEADER = '\n\t["sr", "__SendResults__", { }],\n\t'+\
         '["sep", "Separator", {}],\n\t' +\
         '["intro", "Message", {consentRequired: true, html: {include: "intro.html"}}],\n\t' +\
-        '["info", "Form", {html: {include: "info.html"}}],'
+        '["info", "Form", {html: {include: "info.html"}}],\n'
 ITEMS_FOOTER = '\t["contact", "Message", {consentRequired: false, html: {include: "contacts.html"}}],\n\t'+\
         '["code", "Message", {consentRequired: false, html: {include: "code.html"}}]'
-ITEMS_PRACTICE = '\t["startprac", "Message", {consentRequired: false, html: {include: "start_practice.html"}}]\n\t'+\
-        '["endprac", "Message", {consentRequired: false, html: {include: "end_practice.html"}}]'
+ITEMS_PRACTICE = ['\n\t["startprac", "Message", {consentRequired: false, html: {include: "start_practice.html"}}],\n',
+                  ',\n\t["endprac", "Message", {consentRequired: false, html: {include: "end_practice.html"}}],\n']
 
 COL_STIMULUS = "Stimulus"
 COL_STIM_ID = "StimulusID"
@@ -430,14 +430,14 @@ def generate_item_str(infile, multi=False):
 
     outputStr = ITEMS_HEADER
 
-    practice = [item for item in dct if item['Type'] == 'practice']
-    if practice != []:
-        outputStr += ITEMS_PRACTICE
-
     # output N instances of this string, where N is the number of lists
     outputStr += "\n\t"+'\n\t'.join(['[["list_ordering", 0], "Separator", {}],' for i in range(len(ListSet))])
 
-    items = [format_item(item, multi=multi) for item in sorted(dct, key=lambda x: x['Order'])]
+    practice = sorted([item for item in dct if item['Type'] == 'practice'], key=lambda x: x['Order'])
+    if practice != []:
+        outputStr += ITEMS_PRACTICE[0] + '\t' + ',\n\t'.join([format_item(item, multi=multi) for item in practice]) +  ITEMS_PRACTICE[1]
+
+    items = [format_item(item, multi=multi) for item in sorted(dct, key=lambda x: x['Order']) if item['Type'] != 'practice']
 
     outputStr += "\n\t"+',\n\t'.join(items)
 
