@@ -184,7 +184,7 @@ def format_header(dct):
         tmp = tmp.format(','.join(['"{0}"'.format(c) for c in Criticals]))
 
     try:
-        outStr = 'var shuffleSequence = seq("intro", "info", "practice", sepWith("sep", {0}), "contact", "sr", "code");\n\n'+\
+        outStr = 'var shuffleSequence = seq("intro", "info", "startprac", "practice", "endprac", sepWith("sep", {0}), "contact", "sr", "code");\n\n'+\
             'var ds = "RegionedSentence";\n'+\
             'var qs = "Question";\n\n'+\
             'var manualSendResults = true;\n\n' +\
@@ -339,11 +339,11 @@ def generate_item_dict(infile):
                     skip = False
                     question = questions['Question'+str(j)]
                     if question in IGNORED_VALUES:
-                        #print "Warning at stimulus {0}: Invalid or no value for Question {1}. Skipping item!".format(i,j)
+                        print "Warning at stimulus {0}: Invalid or no value for Question {1}. Skipping item!".format(i,j)
                         skip = True
                     answer = questions['Answer'+str(j)]
                     if (answer in IGNORED_VALUES) and (skip == False) :
-                        #print "Warning at stimulus {0}: No Answer for Question {1}. Skipping item!".format(i,j)
+                        print "Warning at stimulus {0}: No Answer for Question {1}. Skipping item!".format(i,j)
                         skip = True
                     if not skip:
                         final_questions.append({'Question': question, 'Answer': answer})
@@ -411,7 +411,12 @@ def format_item(item, multi=False):
     fmt_item = ' ds, {{s: "{0}", id: "{1}" }}'
     if multi:
         stimulus = split_context_stimuli(stimulus)
-        fmt_item = ' ds, {{s: {0}, id: "{1}" }}'
+        if len(stimulus) == 1:
+            # if it was a single sentence, return just the sentence
+            stimulus = stimulus[0]
+        else:
+            # if it's a proper array of quoted sentences, don't quote the array
+            fmt_item = ' ds, {{s: {0}, id: "{1}" }}'
 
     fmt_item = fmt_item.format(stimulus, item['ID'])
     fmt_quest = format_questions(questions)
