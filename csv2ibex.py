@@ -244,6 +244,16 @@ def generate_item_dict(infile):
             print "ERROR: No 'Stimulus' column...\n\t-required to build an experiment!"
             sys.exit(1)
 
+        # Determine Question and Answer field names
+        qf = re.compile(r'^' + COL_QUESTION)
+        af = re.compile(r'^' + COL_ANSWER)
+        questions = [field for field in fields if re.match(qf, field)]
+        answers = [field for field in fields if re.match(af, field)]
+        qfields = zip(sorted(questions),sorted(answers))
+        if len(questions) != len(answers):
+            print "ERROR: Unequal number of question and answer columns!"
+            sys.exit(1)
+
         for i, line in enumerate(inputdata, start=1):
             itemDict = {}
 
@@ -328,20 +338,17 @@ def generate_item_dict(infile):
                 print "Warning: Missing Item ID at stimuli {0}".format(i)
 
             #QUESTIONs and ANSWERs
-            qa = re.compile(r'^[Question|Answer]')
-            questions = dict([(k,v) for (k,v) in line.iteritems() if re.match(qa, k)])
-
             final_questions = []
             if len(questions) == 0:
                 print "No question/answer pair found for stimulus",i,", using only stimulus."
             else:
-                for j in range(1, (len(questions) / 2)+1):
+                for j, (q,a) in enumerate(qfields,1):
                     skip = False
-                    question = questions['Question'+str(j)]
+                    question = line[q]
                     if question in IGNORED_VALUES:
                         print "Warning at stimulus {0}: Invalid or no value for Question {1}. Skipping item!".format(i,j)
                         skip = True
-                    answer = questions['Answer'+str(j)]
+                    answer = line[a]
                     if (answer in IGNORED_VALUES) and (skip == False) :
                         print "Warning at stimulus {0}: No Answer for Question {1}. Skipping item!".format(i,j)
                         skip = True
@@ -436,7 +443,7 @@ def generate_item_str(infile, multi=False):
     outputStr = ITEMS_HEADER
 
     # output N instances of this string, where N is the number of lists
-    outputStr += "\n\t"+'\n\t'.join(['[["list_ordering", 0], "Separator", {}],' for i in range(len(ListSet))])
+    outputStr += "\n\t"+'\n\t'.join(['[["list_ordering", 0], "Separator", {transfer: 200, normalMessage: "The experiment will start momentarily"}],' for i in range(len(ListSet))])
 
     practice = sorted([item for item in dct if item['Type'] == 'practice'], key=lambda x: x['Order'])
     if practice != []:
