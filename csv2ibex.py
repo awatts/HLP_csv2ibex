@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#!/usr/bin/env python
 #------------------------------------------------------------------
 # csv2ibex.py
 #------------------------------------------------------------------
@@ -39,12 +39,15 @@ ITEM_FMT_STRINGS = { \
 #editable from config or cmdline (TODO)
 ITEMS_HEADER = '\n\t["sr", "__SendResults__", { }],\n\t'+\
         '["sep", "Separator", {}],\n\t' +\
-        '["intro", "Message", {consentRequired: true, html: {include: "intro.html"}}],\n\t' +\
-        '["info", "Form", {html: {include: "info.html"}}],\n'
+        '["intro", "Message", {html: {include: "intro.html"}}],\n\t' +\
+        '["info", "Form", {html: {include: "info.html"}}],'
 ITEMS_FOOTER = '\t["contact", "Message", {consentRequired: false, html: {include: "contacts.html"}}],\n\t'+\
-        '["code", "Message", {consentRequired: false, html: {include: "code.html"}}]'
+        '["code", "Form", {consentRequired: false, continueMessage:"This is the final page. You do not need to click to continue.", html: {include: "code.html"}}]'
 ITEMS_PRACTICE = ['\n\t["startprac", "Message", {consentRequired: false, html: {include: "start_practice.html"}}],\n',
-                  ',\n\t["endprac", "Message", {consentRequired: false, html: {include: "end_practice.html"}}],\n']
+                  ',\n\t["endprac", "Message", {consentRequired: false, html: {include: "end_practice.html"}}],']
+
+#this goes inbetween questions when there are 2 or more questions
+QUEST_SEP = 'sep, {errorMessage: "Wrong. Please wait for the next question", normalMessage: "Please wait for the next question"}'
 
 COL_STIMULUS = "Stimulus"
 COL_STIM_ID = "StimulusID"
@@ -184,9 +187,10 @@ def format_header(dct):
         tmp = tmp.format(','.join(['"{0}"'.format(c) for c in Criticals]))
 
     try:
-        outStr = 'var shuffleSequence = seq("intro", "info", "startprac", "practice", "endprac", sepWith("sep", {0}), "contact", "sr", "code");\n\n'+\
+        outStr = 'var shuffleSequence = seq("intro", "info", "list_ordering", "startprac", "practice", "endprac", sepWith("sep", {0}), "contact", "sr", "code");\n\n'+\
             'var ds = "RegionedSentence";\n'+\
-            'var qs = "Question";\n\n'+\
+            'var qs = "Question";\n'+\
+            'var sep = "Separator";\n\n'+\
             'var manualSendResults = true;\n\n' +\
             '{1}'
         return outStr.format(tmp, dct["defaults"])
@@ -365,7 +369,11 @@ def format_questions(qlst):
     for being added to an item
     """
     qs = []
-    for q in qlst:
+    multiq = False
+    if len(qlst) > 1:
+        multiq = True
+
+    for i, q in enumerate(qlst, 1):
         question = q['Question']
         #determine type of question (yes/no vs multiple choice)
         answer = q['Answer'].upper()
@@ -380,6 +388,12 @@ def format_questions(qlst):
 
         #build the string of questions
         qs.append('qs, {{q: "{0}", {1}}}'.format(question, answer))
+        if multiq:
+            if i < len(qlst):
+                qs.append(QUEST_SEP)
+            else:
+                qs.append('sep, {}')
+
     if qs == []:
         return None
     else:
@@ -394,7 +408,7 @@ def split_context_stimuli(stimulus):
 
     # Each sentence should end with a period, question mark, or exclamation mark
     # followed by a space
-    stimlist = [x for x in re.split(r"([^\.]+[\.\?\!]+) ", stimulus) if len(x) > 0]
+    stimlist = [x for x in re.split(r"([^\.\?\!]+[\.\?\!]+) ", stimulus) if len(x) > 0]
 
     for i, item in enumerate(stimlist):
         tmp = re.split(r"(S\d+:) (.*)", item)
@@ -429,7 +443,12 @@ def format_item(item, multi=False):
     fmt_quest = format_questions(questions)
     if fmt_quest:
         fmt_item = ',\n\t\t'.join((fmt_item, fmt_quest))
-    return '[["{0}",[{1},0]],{2}]'.format(item['Type'], str(item['Order']), fmt_item)
+    order = ''
+    if item['Type'] in Non_Criticals:
+        order = '{0}]'.format(str(item['Order']))
+    else:
+        order = '[{0},0]]'.format(str(item['Order']))
+    return '[["{0}",{1},{2}]'.format(item['Type'], order, fmt_item)
 
 def generate_item_str(infile, multi=False):
     """
@@ -490,12 +509,12 @@ def format_results(infile):
 
     check_file(infile)
 
-    sHead = ("DateReceived","ParticipantID","IP_MD5","ControllerName","ItemID",
-             "ElementNumber","StimulusType","Group","WordPosition","Word",
-             "RegionTag","RT","Newline","Sentence")
-    qHead = ("DateReceived","ParticipantID","IP_MD5","ControllerName","ItemID",
-             "ElementNumber","StimulusType","Group","Question","Answer",
-             "AnswerCorrect","AnswerTime")
+    sHead = ("DateReceived", "ParticipantID", "IP_MD5", "ControllerName", "ItemID",
+             "ElementNumber", "StimulusType", "Group", "WordPosition", "Word",
+             "RegionTag", "RT", "Newline", "Sentence")
+    qHead = ("DateReceived", "ParticipantID", "IP_MD5", "ControllerName", "ItemID",
+             "ElementNumber", "StimulusType", "Group", "Question", "Answer",
+             "AnswerCorrect", "AnswerTime")
     sOut = []
     qOut = []
     qSeq = 0
@@ -560,7 +579,7 @@ def format_results(infile):
 
     with open('sentences.csv','w') as fout:
         sdr = csv.DictWriter(fout, fieldnames=sHead, delimiter='\t')
-        sdr.writerow(dict(zip(sHead,sHead))) # write a header row
+        sdr.writerow(dict(zip(sHead, sHead))) # write a header row
         for row in sOut:
             sdr.writerow(row)
         print "File 'sentences.csv' successfully written"
@@ -589,11 +608,11 @@ def set_strict(option, opt_str, value, parser):
 
 # USER INTERFACE *********************************************************************
 
-if __name__=="__main__":
+if __name__ == "__main__":
     import sys
     from optparse import OptionParser
 
-    usageStr= "\t%prog [PARAMETERS] INPUT_FILE OUTPUT_FILE\n" +\
+    usageStr = "\t%prog [PARAMETERS] INPUT_FILE OUTPUT_FILE\n" +\
           "or:\t %prog -c CONFIG_FILE [MORE PARAMETERS] [INPUT_FILE OUTPUT_FILE]\n" +\
           "or:\t %prog -O [RESULTS_FILE (default 'results')]\n" +\
           "or:\t %prog --help"
@@ -657,13 +676,13 @@ if __name__=="__main__":
                 options.configfile = raw_input("Enter the name of your custom config file, or simply hit enter to continue with prompts:")
                 if(options.configfile == ""):
                     options.configfile = "default.cfg"
-            if(options.infile == None or configfile == "default.cfg"):
+            if(options.infile == None or options.configfile == "default.cfg"):
                 options.infile = raw_input("Enter the name of your input file (required): ")
                 check_file(options.infile)
             if(outfile == None or options.configfile == "default.cfg"):
                 outfile = raw_input("Enter the desired output file name [data.js]: ")
                 if(options.outfile == ""):
-                    outfile="data.js"
+                    outfile = "data.js"
             if(options.configfile == "default.cfg"):
                 if( (raw_input("Evenly space different item types? \nUse this option unless you have specified an order for all items (y/n)")) == 'y'):
                     options.shuffle = True
