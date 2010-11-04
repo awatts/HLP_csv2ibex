@@ -405,10 +405,13 @@ def split_context_stimuli(stimulus):
     formatted such that any starting with "S\d+:" has that element joined with
     the first word.
     """
-
-    # Each sentence should end with a period, question mark, or exclamation mark
-    # followed by a space
-    stimlist = [x for x in re.split(r"([^\.\?\!]+[\.\?\!]+) ", stimulus) if len(x) > 0]
+    # Each sentence should be N > 0 non-final-punctuation chars [!?.] followed by
+    # final-punctuation [!?.] followed by a whitespace and a capital letter.
+    # This should get around 80-90% of sentence boundaries, but misses some and
+    # for some reason chokes on things like "Washington, D.C.", at the end of a
+    # sentence which comes out as ["... Washington, D." "C."]
+    sentre = r'([^\.\?\!]+[\.\?\!]+)(?=\s+[A-Z])'
+    stimlist = [x.strip() for x in re.split(sentre, stimulus) if len(x) > 0]
 
     for i, item in enumerate(stimlist):
         tmp = re.split(r"(S\d+:) (.*)", item)
@@ -429,26 +432,29 @@ def format_item(item, multi=False):
         pass # it's already set to []
 
     stimulus = item['Stimulus']
-    fmt_item = ' ds, {{s: "{0}", id: "{1}" }}'
+    itmlst = item['List'] #TODO: add list information to critical items
+    fmt_item = ' ds, {{s: "{0}", id: "{1}", list: "{2}"}}'
     if multi:
+        if item['Type'] in Non_Criticals:
+            itmlst = 'NA' # don't need list info for singleton items
         stimulus = split_context_stimuli(stimulus)
         if len(stimulus) == 1:
             # if it was a single sentence, return just the sentence
             stimulus = stimulus[0]
         else:
             # if it's a proper array of quoted sentences, don't quote the array
-            fmt_item = ' ds, {{s: {0}, id: "{1}" }}'
+            fmt_item = ' ds, {{s: {0}, id: "{1}", list: "{2}"}}'
 
-    fmt_item = fmt_item.format(stimulus, item['ID'])
+    fmt_item = fmt_item.format(stimulus, item['ID'], itmlst)
     fmt_quest = format_questions(questions)
     if fmt_quest:
         fmt_item = ',\n\t\t'.join((fmt_item, fmt_quest))
     order = ''
     if item['Type'] in Non_Criticals:
-        order = '{0}]'.format(str(item['Order']))
+        order = '{0}'.format(str(item['Order']))
     else:
-        order = '[{0},0]]'.format(str(item['Order']))
-    return '[["{0}",{1},{2}]'.format(item['Type'], order, fmt_item)
+        order = '[{0},0]'.format(str(item['Order']))
+    return '[["{0}",{1}],{2}]'.format(item['Type'], order, fmt_item)
 
 def generate_item_str(infile, multi=False):
     """
