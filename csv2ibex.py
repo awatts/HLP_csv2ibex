@@ -165,17 +165,17 @@ def format_header(dct):
     """
     order = dct["order"]
     filler = dct["filler"]
-    tmp = ""
+    item_order = ""
 
     if(filler == "SEP_EACH"):
-        tmp = {
+        item_order = {
             "ORDERED" : 'shuffle(randomize("filler"), anyOf({0}))',
             "SHUFFLE" : 'shuffle(randomize("filler"), shuffle({0}))',
             "RANDOM" : 'shuffle(randomize("filler"), seq(randomize({0})))',
             "RSHUFFLE" : 'shuffle(randomize("filler"), rshuffle({0}))'
         }[order]
     else:
-        tmp = {
+        item_order = {
             "ORDERED" : 'anyOf("filler", {0})',
             "SHUFFLE" : 'shuffle("filler",{0})',
             "RANDOM" : 'randomize(anyOf("filler",{0}))',
@@ -184,7 +184,7 @@ def format_header(dct):
 
     #if the item list has been generated, go ahead and fill in the critical names
     if len(Criticals):
-        tmp = tmp.format(','.join(['"{0}"'.format(c) for c in Criticals]))
+        item_order = item_order.format(','.join(['"{0}"'.format(c) for c in Criticals]))
 
     try:
         outStr = 'var shuffleSequence = seq("intro", "info", "list_ordering", "startprac", "practice", "endprac", sepWith("sep", {0}), "contact", "sr", "code");\n\n'+\
@@ -193,7 +193,7 @@ def format_header(dct):
             'var sep = "Separator";\n\n'+\
             'var manualSendResults = true;\n\n' +\
             '{1}'
-        return outStr.format(tmp, dct["defaults"])
+        return outStr.format(item_order, dct["defaults"])
     except KeyError:
         print "WARNING: invalid header dictionary...returning a NoneType"
         return None
@@ -405,7 +405,7 @@ def split_context_stimuli(stimulus):
     formatted such that any starting with "S\d+:" has that element joined with
     the first word.
     """
-    # Each sentence should be N > 0 non-final-punctuation chars [!?.] followed by
+    # Each sentence should be N > 0 non-final-punctuation chars (i.e. not [!?.]) followed by
     # final-punctuation [!?.] followed by a whitespace and a capital letter.
     # This should get around 80-90% of sentence boundaries, but misses some and
     # for some reason chokes on things like "Washington, D.C.", at the end of a
