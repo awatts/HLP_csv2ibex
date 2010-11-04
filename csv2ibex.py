@@ -198,25 +198,18 @@ def format_header(dct):
         print "WARNING: invalid header dictionary...returning a NoneType"
         return None
 
-def generate_header_cnf(conf):
+def generate_header(conf):
     """
-    Wrapper for the parse_config_file method that generates a formatted string rather than a dictionary.
     params:
-      * conf:String - name of the input config file
+      * conf:String (name of input config file) or Dictionary of values for header
+        proper action is taken based on type
     return:
       * String header (formatted)
     """
-    d = parse_config_file(conf)
-    return format_header(d)
-def generate_header_dct(dct):
-    """
-    Wrapper for the parse_config_file method that generates a formatted string rather than a dictionary.
-    params:
-      * dct: - dict gathered from parse_config_file
-    return:
-      * String header (formatted)
-    """
-    return format_header(dct)
+    if type(conf) == dict:
+        return format_header(conf)
+    elif type(conf) == str:
+        return format_header(parse_config_file(conf))
 
 # ITEM GENERATION *****************************************************
 
@@ -728,7 +721,7 @@ if __name__ == "__main__":
         dct["outputfile"] = outfile
 
     items = generate_item_str(infile, multi=options.multi)
-    header = generate_header_dct(dct)
+    header = generate_header(dct)
 
     #debug the cmd-line processor
     if options.doNothing:
