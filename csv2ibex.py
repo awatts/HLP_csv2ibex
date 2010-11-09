@@ -510,7 +510,7 @@ def format_results(infile):
 
     sHead = ("DateReceived", "ParticipantID", "IP_MD5", "ControllerName", "ItemID",
              "ElementNumber", "StimulusType", "Group", "WordPosition", "Word",
-             "RegionTag", "RT", "Newline", "Sentence")
+             "RegionTag", "RT", "Newline", "Sentence", "ItemUniqueID", "List")
     qHead = ("DateReceived", "ParticipantID", "IP_MD5", "ControllerName", "ItemID",
              "ElementNumber", "StimulusType", "Group", "Question", "Answer",
              "AnswerCorrect", "AnswerTime")
@@ -546,10 +546,12 @@ def format_results(infile):
                         'Group': s[6],
                         'WordPosition': s[7],
                         'Word': unquote(s[8]),
-                        'RegionTag': s[9],
+                        'RegionTag': unquote(s[9]).strip(','),
                         'RT': s[10],
                         'Newline': s[11],
-                        'Sentence': unquote(s[12])
+                        'Sentence': unquote(s[12]),
+                        'ItemUniqueID' : s[13],
+                        'List' : s[14]
                     })
                 elif(s[2] == "Question"):
                     if(qSeq != sSeq):
